@@ -1,0 +1,133 @@
+#!/usr/bin/python
+
+# To support both python 2 and python 3
+from __future__ import division, print_function, unicode_literals
+
+# Common imports
+import os
+import numpy as np
+import scipy as sp
+
+# Data frame
+import pandas as pd
+
+import statistics
+
+
+columns = [x for x in range(21)]
+data = pd.read_csv('itcont.txt', sep='|', header=None)
+data
+
+
+data['total'] = pd.Series()
+data['count'] = pd.Series()
+
+data['total'].fillna(value=0, inplace=True)
+data['count'].fillna(value=1, inplace=True)
+data
+
+
+data[10]
+
+index = 0
+for zipcode in data[10]:
+    zipcode = int(str(zipcode)[:5])
+    data.set_value(index, 10, zipcode)
+    index = index + 1
+#print(data[10])
+
+
+
+repeats = []
+rows_to_drop = []
+new_data = data.copy()
+for index in range(new_data.shape[0]):
+    if (pd.notnull(new_data.get_value(index, 15))):
+        rows_to_drop.append(index)
+        continue
+
+    if (index in repeats):
+        continue
+    repeats.append(index)
+    amounts_to_get_median = [new_data.get_value(index, 14)]
+    aomunts_to_sum = new_data.get_value(index, 14)
+    new_data.set_value(index, 'total', aomunts_to_sum)
+    
+    start_index = index + 1
+    count = 1
+    for index2 in range(start_index, new_data.shape[0]):
+        if (new_data.get_value(index, 0) == new_data.get_value(index2, 0) 
+            and new_data.get_value(index, 10) == new_data.get_value(index2, 10)):
+            print("index2= " + str(index2))
+            #print(new_data.get_value(index2, 14))
+            amounts_to_get_median.append(new_data.get_value(index2, 14))
+            aomunts_to_sum += new_data.get_value(index2, 14)
+            repeats.append(index2)
+            print(str(repeats))
+            
+            # calculate the median, 
+            median_of_medians = round(statistics.median(amounts_to_get_median))
+            print(str(index2) + ": " + "amounts_to_get_median=" + str(amounts_to_get_median) + " median=" + str(median_of_medians))
+            new_data.set_value(index2, 14, median_of_medians)
+            new_data.set_value(index2, 'total', aomunts_to_sum)
+            
+            # count
+            count += 1
+            new_data.set_value(index2, 'count', count)
+            
+new_data = new_data.drop(new_data.index[rows_to_drop])
+new_data.reset_index(inplace=True)
+
+data_to_output = new_data[[0, 10, 14, 'count', 'total']].copy()
+data_to_output.to_csv('medianvals_by_zip.txt', sep='|', header=None, index=None)
+
+
+new_data
+
+repeats = []
+
+new_data2 = new_data.copy()
+for index in range(new_data2.shape[0]):
+    if (index in repeats):
+        continue
+    repeats.append([index])
+    amounts_to_sum = new_data2.get_value(index, 14)
+    #rows_to_keep[index] = index
+    count = 1
+    start_index = index + 1
+    for index2 in range(start_index, new_data2.shape[0]):
+        if (new_data2.get_value(index, 0) == new_data2.get_value(index2, 0) and
+           new_data2.get_value(index, 13) == new_data2.get_value(index2, 13)):
+            amounts_to_sum += new_data2.get_value(index2, 14)
+            count += 1
+            #rows_to_keep[index] = index2
+            new_data2.set_value(index, 'count', count)
+            new_data2.set_value(index, 'total', amounts_to_sum)  
+new_data2            
+
+
+repeats = []
+rows_to_drop = []
+for index in range(new_data2.shape[0]):
+    if (index in repeats):
+        continue
+    repeats.append([index])
+    amounts_to_sum = new_data2.get_value(index, 14)
+    count = 1
+    start_index = index + 1
+    for index2 in range(start_index, new_data2.shape[0]):
+        if (new_data2.get_value(index, 0) == new_data2.get_value(index2, 0) and
+           new_data2.get_value(index, 13) == new_data2.get_value(index2, 13)):
+            print(index, index2)
+            repeats.append([index2])
+            if (new_data2.get_value(index, 'total') < new_data2.get_value(index2, 'total')):
+                new_data2.set_value(index, 'total', new_data2.get_value(index2, 'total'))
+                new_data2.set_value(index, 'count', new_data2.get_value(index2, 'count'))
+                new_data2.set_value(index, 14, new_data2.get_value(index2, 14))
+            if (index2 not in rows_to_drop):
+                rows_to_drop.append(index2)
+new_data3 = new_data2.drop(rows_to_drop)
+new_data3
+
+data_to_output_date = new_data3[[0, 13, 14, 'count', 'total']].copy()
+data_to_output_date.to_csv('medianvals_by_date.txt', sep='|', header=None, index=None)
